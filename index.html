@@ -223,11 +223,22 @@
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      max-width: 600px;
+      max-width: 650px;
       width: 90%;
       max-height: 85vh;
       overflow-y: auto;
       padding: 24px;
+    }
+    .code-block {
+      background: #111118;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #a5d6a7;
+      overflow-x: auto;
+      white-space: pre;
     }
   </style>
 </head>
@@ -250,7 +261,7 @@
       <label style="margin:0;">NVIDIA API Key</label>
       <div class="api-links">
         <a href="https://build.nvidia.com/" target="_blank">🔗 발급 링크</a>
-        <button type="button" class="btn-outline" onclick="openModal()">발급 매뉴얼</button>
+        <button type="button" class="btn-outline" onclick="openModal('nvidiaModal')">발급 매뉴얼</button>
       </div>
     </div>
     <input type="password" id="apiKey" placeholder="nvapi-..." oninput="handleApiKeyInput()" style="margin-top:6px;" />
@@ -260,8 +271,14 @@
       <span>이 브라우저에 API Key 저장 (LocalStorage)</span>
     </label>
 
-    <!-- CORS 프록시 엔드포인트 -->
-    <label style="margin-top:14px;">CORS 프록시 엔드포인트 (Cloudflare Worker URL)</label>
+    <!-- CORS 프록시 엔드포인트 (직접 입력란) -->
+    <div class="api-header" style="margin-top:14px;">
+      <label style="margin:0;">CORS 프록시 엔드포인트 (Cloudflare Worker URL)</label>
+      <div class="api-links">
+        <a href="https://dash.cloudflare.com/" target="_blank">🔗 Cloudflare 대시보드</a>
+        <button type="button" class="btn-outline" onclick="openModal('cfModal')">워커 구축 매뉴얼</button>
+      </div>
+    </div>
     <input type="text" id="proxyUrl" placeholder="https://<당신의-워커-이름>.workers.dev" oninput="handleProxyInput()" style="margin-top:4px;" />
     
     <label class="chk-group" style="margin-top:6px;" for="saveProxyCheckbox">
@@ -343,8 +360,8 @@
   </div>
 </div>
 
-<!-- API 가이드 모달 -->
-<div class="modal-overlay" id="manualModal">
+<!-- 1. NVIDIA API 가이드 모달 -->
+<div class="modal-overlay" id="nvidiaModal">
   <div class="modal">
     <h2>📖 NVIDIA API Key 발급 매뉴얼</h2>
     <ol style="padding-left:20px; line-height:1.8;">
@@ -354,18 +371,71 @@
       <li><code>Get API Key</code> 버튼을 클릭해 생성된 <code>nvapi-...</code> 키를 복사합니다.</li>
       <li>입력창에 붙여넣고 사주 풀이를 진행합니다.</li>
     </ol>
-    <button onclick="closeModal()" style="margin-top:12px;">닫기</button>
+    <button onclick="closeModal('nvidiaModal')" style="margin-top:12px;">닫기</button>
+  </div>
+</div>
+
+<!-- 2. Cloudflare Worker 프록시 구축 매뉴얼 모달 -->
+<div class="modal-overlay" id="cfModal">
+  <div class="modal">
+    <h2>⚡ Cloudflare Workers 프록시 1분 생성 매뉴얼</h2>
+    <ol style="padding-left:20px; line-height:1.8;">
+      <li><a href="https://dash.cloudflare.com/" target="_blank" style="color:var(--accent-color);">Cloudflare 대시보드</a> 로그인 후 좌측 <strong>Workers & Pages</strong> 메뉴로 이동합니다.</li>
+      <li><strong>Create application</strong> &gt; <strong>Create Worker</strong>를 클릭하고 <strong>Start with Hello World!</strong>를 선택합니다.</li>
+      <li>Worker 이름을 지정하고 <strong>Deploy</strong> 버튼을 누릅니다.</li>
+      <li>배포 후 우측 상단의 <strong>Edit code</strong>를 누르고, 기존 코드를 모두 지운 뒤 아래 코드를 복사해 붙여넣습니다:</li>
+    </ol>
+    
+    <div class="code-block">export default {
+  async fetch(request) {
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "*",
+        },
+      });
+    }
+
+    const targetUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
+    const newRequest = new Request(targetUrl, {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+    });
+
+    const response = await fetch(newRequest);
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set("Access-Control-Allow-Origin", "*");
+    newHeaders.set("Access-Control-Allow-Headers", "*");
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
+  },
+};</div>
+
+    <ol start="5" style="padding-left:20px; line-height:1.8; margin-top:10px;">
+      <li>우측 상단 <strong>Save and deploy</strong>를 클릭합니다.</li>
+      <li>생성된 Worker 주소(예: <code>https://<워커이름>.<계정명>.workers.dev</code>)를 복사하여 <strong>CORS 프록시 엔드포인트</strong> 입력란에 넣으시면 됩니다.</li>
+    </ol>
+
+    <button onclick="closeModal('cfModal')" style="margin-top:12px;">닫기</button>
   </div>
 </div>
 
 <script>
-const DEFAULT_WORKER_URL = ""; 
-
 const STORAGE_KEY_API = "nvidia_api_key_store";
 const STORAGE_KEY_PROXY = "nvidia_proxy_url_store";
 const STORAGE_KEY_PROFILE = "my_saju_profile_store";
 const STORAGE_KEY_TARGETS = "my_saju_targets_store";
 const STORAGE_KEY_QUESTIONS = "my_saju_questions_store";
+
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
 function formatDateTimeInput(el) {
   let v = el.value.replace(/[^0-9]/g, '');
@@ -397,8 +467,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (savedProxy !== null) {
     document.getElementById("proxyUrl").value = savedProxy;
     document.getElementById("saveProxyCheckbox").checked = true;
-  } else if (DEFAULT_WORKER_URL) {
-    document.getElementById("proxyUrl").value = DEFAULT_WORKER_URL;
   }
 
   // 3. 본인 정보
@@ -436,7 +504,6 @@ window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("saveQuestionsCheckbox").checked = true;
   }
 
-  // 전체 마스터 체크박스 상태 갱신
   updateMasterCheckboxState();
 });
 
@@ -447,7 +514,6 @@ function toggleAllSaves(isChecked) {
     chk.checked = isChecked;
   });
 
-  // 각 항목별 저장/삭제 동기화
   handleSaveKeyChange();
   handleSaveProxyChange();
   handleSaveProfileChange();
@@ -455,7 +521,6 @@ function toggleAllSaves(isChecked) {
   handleSaveQuestionsChange();
 }
 
-// 개별 체크박스 상태 변화에 따른 마스터 체크박스 실시간 동기화
 function updateMasterCheckboxState() {
   const master = document.getElementById("masterSaveCheckbox");
   const subCheckboxes = Array.from(document.querySelectorAll('.sub-save-chk'));
@@ -476,7 +541,7 @@ function updateMasterCheckboxState() {
     master.indeterminate = false;
   } else {
     master.checked = false;
-    master.indeterminate = true; // 부분 선택 상태
+    master.indeterminate = true;
   }
 }
 
@@ -508,7 +573,7 @@ function handleSaveProxyChange() {
   const proxyInput = document.getElementById("proxyUrl");
   const checkbox = document.getElementById("saveProxyCheckbox");
   if (checkbox.checked) {
-    localStorage.setItem(STORAGE_KEY_PROXY, proxyInput.value.trim());
+    if (proxyInput.value.trim()) localStorage.setItem(STORAGE_KEY_PROXY, proxyInput.value.trim());
   } else {
     localStorage.removeItem(STORAGE_KEY_PROXY);
   }
@@ -651,9 +716,6 @@ function handlePersonaChange() {
   document.getElementById('customPersonaBox').style.display = (selected === 'custom') ? 'block' : 'none';
 }
 
-function openModal() { document.getElementById('manualModal').style.display = 'flex'; }
-function closeModal() { document.getElementById('manualModal').style.display = 'none'; }
-
 const PERSONA_PRESETS = {
   daemansin: {
     name: "영험한 만년 대만신",
@@ -744,6 +806,7 @@ function parseBirthInfo(birthVal, isLunar, isLeap) {
 
 async function startReading() {
   const apiKey = document.getElementById('apiKey').value.trim();
+  const proxyUrl = document.getElementById('proxyUrl').value.trim();
   const name = document.getElementById('myName').value.trim();
   const gender = document.getElementById('myGender').value;
   const birthVal = document.getElementById('myBirth').value.trim();
@@ -756,9 +819,8 @@ async function startReading() {
     return;
   }
 
-  // 저장 체크 상태 반영
   if (document.getElementById("saveKeyCheckbox").checked) localStorage.setItem(STORAGE_KEY_API, apiKey);
-  if (document.getElementById("saveProxyCheckbox").checked) localStorage.setItem(STORAGE_KEY_PROXY, document.getElementById("proxyUrl").value.trim());
+  if (document.getElementById("saveProxyCheckbox").checked) localStorage.setItem(STORAGE_KEY_PROXY, proxyUrl);
   if (document.getElementById("saveProfileCheckbox").checked) saveProfileToStorage();
   if (document.getElementById("saveQuestionsCheckbox").checked) localStorage.setItem(STORAGE_KEY_QUESTIONS, questions);
   syncTargetsToStorage();
@@ -847,7 +909,8 @@ async function executeStep(isRetry = false) {
   const titleEl = document.getElementById('currentStepTitle');
   const progressFill = document.getElementById('progressFill');
 
-  let targetUrl = document.getElementById("proxyUrl").value.trim() || DEFAULT_WORKER_URL;
+  // 사용자가 입력한 프록시 URL 우선 사용, 비어있으면 공개 CORS 우회 프록시 활용
+  let targetUrl = document.getElementById("proxyUrl").value.trim();
   if (!targetUrl) {
     targetUrl = `https://corsproxy.io/?${encodeURIComponent("https://integrate.api.nvidia.com/v1/chat/completions")}`;
   }
@@ -945,7 +1008,7 @@ async function executeStep(isRetry = false) {
     if (err.name === 'AbortError') {
       outputEl.innerHTML += `\n\n[연결 중단됨]: 요청이 중단되었습니다. '재시도' 버튼을 눌러 이어서 진행하세요.`;
     } else {
-      outputEl.innerHTML += `\n\n[오류 발생]: ${err.message}\nCloudflare Worker 프록시 주소 및 API Key를 확인 후 '재시도'를 눌러주세요.`;
+      outputEl.innerHTML += `\n\n[오류 발생]: ${err.message}\nCORS 프록시 주소 및 API Key를 확인 후 '재시도'를 눌러주세요.`;
       setStatus("오류 발생", "var(--danger-color)");
     }
   }
