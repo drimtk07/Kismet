@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 페르소나 종합 사주 & 궁합 리포트</title>
+  <style>
+    :root {
+      --bg-color: #121218;
+      --card-bg: #1c1c24;
+      --sub-card-bg: #232330;
+      --accent-color: #d4af37;
+      --accent-hover: #b89628;
+      --danger-color: #e53935;
+      --warning-color: #f59e0b;
+      --text-color: #e0e0e0;
+      --muted-text: #8a8a9e;
+      --border-color: #333344;
+      --input-bg: #282836;
+    }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    h1, h2, h3 {
+      color: var(--accent-color);
+      margin-top: 0;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--muted-text);
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 9px 10px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 0.9rem;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+
+    .inline-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      flex-wrap: nowrap;
+    }
+    .inline-row .field-name { flex: 1.2; min-width: 80px; }
+    .inline-row .field-relation { flex: 1.2; min-width: 90px; }
+    .inline-row .field-gender { flex: 0.9; min-width: 70px; }
+    .inline-row .field-birth { flex: 2.6; min-width: 190px; }
+    
+    .chk-group {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text-color);
+    }
+    .chk-group input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      accent-color: var(--accent-color);
+      cursor: pointer;
+    }
+
+    .btn-close-mini {
+      background: transparent;
+      border: none;
+      color: var(--muted-text);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px 6px;
+      line-height: 1;
+      border-radius: 4px;
+      transition: all 0.2s;
+      width: auto;
+      margin: 0;
+    }
+    .btn-close-mini:hover {
+      color: var(--danger-color);
+      background: rgba(229, 57, 53, 0.15);
+    }
+
+    .sub-card {
+      background: var(--sub-card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    button {
+      background-color: var(--accent-color);
+      color: #111;
+      border: none;
+      font-weight: bold;
+      padding: 12px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) { background-color: var(--accent-hover); }
+    button:disabled { background-color: #555; cursor: not-allowed; color: #888; }
+    
+    .btn-secondary {
+      background-color: transparent;
+      border: 1px dashed var(--accent-color);
+      color: var(--accent-color);
+      margin-top: 10px;
+    }
+    .btn-secondary:hover { background-color: rgba(212, 175, 55, 0.1); }
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--accent-color);
+      color: var(--accent-color);
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      width: auto;
+      margin: 0;
+    }
+    .btn-group { display: flex; gap: 10px; margin-top: 16px; }
+    .btn-warning { background-color: var(--warning-color); color: #111; }
+    .btn-danger { background-color: var(--danger-color); color: #fff; }
+
+    .api-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .api-links a {
+      color: var(--accent-color);
+      text-decoration: none;
+      margin-right: 8px;
+      font-size: 0.85rem;
+    }
+    .chat-box { min-height: 200px; white-space: pre-wrap; word-break: break-word; }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--accent-color);
+      border-bottom: 1px dashed var(--border-color);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .progress-bar {
+      height: 6px;
+      background: #282836;
+      border-radius: 3px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .progress-fill { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.3s; }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      margin-bottom: 10px;
+      background: #333;
+      color: #fff;
+    }
+
+    /* 모달 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card" id="formCard">
+    <h1>🔮 AI 종합 사주 & 궁합 명식 의뢰</h1>
+    
+    <div class="api-header">
+      <label style="margin:0;">NVIDIA API Key</label>
+      <div class="api-links">
+        <a href="https://build.nvidia.com/" target="_blank">🔗 발급 링크</a>
+        <button type="button" class="btn-outline" onclick="openModal()">발급 매뉴얼</button>
+      </div>
+    </div>
+    <input type="password" id="apiKey" placeholder="nvapi-..." oninput="handleApiKeyInput()" style="margin-top:6px;" />
+    
+    <label class="chk-group" style="margin-top:8px;" for="saveKeyCheckbox">
+      <input type="checkbox" id="saveKeyCheckbox" onchange="handleSaveKeyChange()" />
+      <span>이 브라우저에 API Key 저장하기 (LocalStorage)</span>
+    </label>
+
+    <!-- AI 캐릭터 페르소나 -->
+    <h3 style="margin-top: 22px;">[해설 상담사 AI 캐릭터 선택]</h3>
+    <select id="personaSelect" onchange="handlePersonaChange()">
+      <option value="daemansin">🧙‍♂️ 영험하고 자상한 만년 대만신 (기본: 따뜻한 조손 멘토)</option>
+      <option value="fact_dosa">📊 팩트폭력 T 성향의 AI 도사 (냉철한 데이터/리스크 분석)</option>
+      <option value="tsundere">😒 툴툴대지만 다 챙겨주는 츤데레 책사 (잔소리+밀착 케어)</option>
+      <option value="mz_tarot">✨ 친근하고 발랄한 Z세대 사주 크리에이터 (트렌디한 비유/응원)</option>
+      <option value="custom">✏️ 사용자 직접 정의 (커스텀 컨셉/말투 주입)</option>
+    </select>
+
+    <div id="customPersonaBox" style="display: none; margin-top: 8px;">
+      <textarea id="customPersonaPrompt" rows="2" placeholder="커스텀 캐릭터의 성격, 어조, 비유 방식을 적어주세요."></textarea>
+    </div>
+
+    <!-- 본인 정보 -->
+    <h3 style="margin-top: 22px;">[본인 정보]</h3>
+    <div class="inline-row">
+      <input type="text" id="myName" class="field-name" placeholder="이름" oninput="handleMyProfileInput()" />
+      <select id="myGender" class="field-gender" onchange="handleMyProfileInput()">
+        <option value="남성">남성</option>
+        <option value="여성">여성</option>
+      </select>
+      <input type="text" id="myBirth" class="field-birth" placeholder="생년월일시 (예: 199001011230)" oninput="formatDateTimeInput(this); handleMyProfileInput();" />
+      <label class="chk-group"><input type="checkbox" id="myIsLunar" onchange="handleMyProfileInput()" /> 음력</label>
+      <label class="chk-group"><input type="checkbox" id="myIsLeap" onchange="handleMyProfileInput()" /> 윤달</label>
+    </div>
+
+    <!-- 본인 인적사항 저장 체크박스 (디폴트: 해제) -->
+    <label class="chk-group" style="margin-top:8px;" for="saveProfileCheckbox">
+      <input type="checkbox" id="saveProfileCheckbox" onchange="handleSaveProfileChange()" />
+      <span>본인 인적사항 이 브라우저에 저장하기 (LocalStorage)</span>
+    </label>
+
+    <!-- 궁합 대상자 목록 -->
+    <div style="margin-top: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">[궁합 대상자 정보 (선택)]</h3>
+      </div>
+      <div id="targetContainer"></div>
+      <button type="button" class="btn-secondary" onclick="addTargetPerson()">+ 궁합 대상자 추가하기</button>
+    </div>
+
+    <h3 style="margin-top: 22px;">[주요 관심사 및 추가 질문]</h3>
+    <textarea id="questions" rows="3" placeholder="1. 올해 이직운과 사업운의 흐름이 궁금합니다.&#10;2. 추가한 상대방과의 궁합/인연 흐름은 어떤가요?"></textarea>
+
+    <button id="startBtn" onclick="startReading()" style="margin-top:16px;">사주 및 궁합 풀이 시작하기</button>
+  </div>
+
+  <!-- 결과 출력 화면 -->
+  <div class="card" id="resultCard" style="display: none;">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="section-title" id="currentStepTitle" style="border:none; margin:0; padding:0;">사주 명식을 세우는 중...</div>
+      <div id="statusBadge" class="status-badge">대기 중</div>
+    </div>
+
+    <div class="chat-box" id="output" style="margin-top:16px;"></div>
+
+    <div class="btn-group">
+      <button id="nextBtn" onclick="requestNextStep()" disabled>다음 단계 풀이 보기</button>
+      <button id="pauseBtn" class="btn-warning" onclick="togglePause()" style="display: none; width: 110px;">일시정지</button>
+      <button id="retryBtn" class="btn-danger" onclick="retryCurrentStep()" style="display: none; width: 110px;">재시도</button>
+    </div>
+  </div>
+</div>
+
+<!-- API 가이드 모달 -->
+<div class="modal-overlay" id="manualModal">
+  <div class="modal">
+    <h2>📖 NVIDIA API Key 발급 매뉴얼</h2>
+    <ol style="padding-left:20px; line-height:1.8;">
+      <li><a href="https://build.nvidia.com/" target="_blank" style="color:var(--accent-color);">build.nvidia.com</a>에 접속합니다.</li>
+      <li>우측 상단 <code>Log In</code>으로 계정 생성/로그인합니다. (무료 크레딧 지급)</li>
+      <li><code>meta/llama-3.3-70b-instruct</code> 모델 페이지로 이동합니다.</li>
+      <li><code>Get API Key</code> 버튼을 클릭해 생성된 <code>nvapi-...</code> 키를 복사합니다.</li>
+      <li>입력창에 붙여넣고 사주 풀이를 진행합니다.</li>
+    </ol>
+    <button onclick="closeModal()" style="margin-top:12px;">닫기</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY_API = "nvidia_api_key_store";
+const STORAGE_KEY_PROFILE = "my_saju_profile_store";
+const STORAGE_KEY_TARGETS = "my_saju_targets_store";
+
+function formatDateTimeInput(el) {
+  let v = el.value.replace(/[^0-9]/g, '');
+  el.dataset.raw = v;
+
+  if (v.length <= 4) {
+    el.value = v;
+  } else if (v.length <= 6) {
+    el.value = `${v.slice(0, 4)}-${v.slice(4)}`;
+  } else if (v.length <= 8) {
+    el.value = `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6)}`;
+  } else if (v.length <= 10) {
+    el.value = `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)} ${v.slice(8)}`;
+  } else {
+    el.value = `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)} ${v.slice(8, 10)}:${v.slice(10, 12)}`;
+  }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  // 1. API Key 복원
+  const savedKey = localStorage.getItem(STORAGE_KEY_API);
+  const keyInput = document.getElementById("apiKey");
+  const keyCheckbox = document.getElementById("saveKeyCheckbox");
+  if (savedKey) {
+    keyInput.value = savedKey;
+    keyCheckbox.checked = true;
+  }
+
+  // 2. 본인 정보 복원
+  const savedProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
+  const profileCheckbox = document.getElementById("saveProfileCheckbox");
+  if (savedProfile) {
+    try {
+      const data = JSON.parse(savedProfile);
+      document.getElementById("myName").value = data.name || "";
+      document.getElementById("myGender").value = data.gender || "남성";
+      document.getElementById("myBirth").value = data.birth || "";
+      formatDateTimeInput(document.getElementById("myBirth"));
+      document.getElementById("myIsLunar").checked = !!data.isLunar;
+      document.getElementById("myIsLeap").checked = !!data.isLeap;
+      profileCheckbox.checked = true;
+    } catch (e) {}
+  } else {
+    profileCheckbox.checked = false;
+  }
+
+  // 3. 저장된 대상자들 복원
+  const savedTargets = localStorage.getItem(STORAGE_KEY_TARGETS);
+  if (savedTargets) {
+    try {
+      const targetList = JSON.parse(savedTargets);
+      if (Array.isArray(targetList)) {
+        targetList.forEach(t => {
+          addTargetPerson(t, true);
+        });
+      }
+    } catch (e) {}
+  }
+});
+
+function handleApiKeyInput() {
+  const keyInput = document.getElementById("apiKey");
+  const checkbox = document.getElementById("saveKeyCheckbox");
+  if (checkbox.checked) localStorage.setItem(STORAGE_KEY_API, keyInput.value.trim());
+}
+
+function handleSaveKeyChange() {
+  const keyInput = document.getElementById("apiKey");
+  const checkbox = document.getElementById("saveKeyCheckbox");
+  if (checkbox.checked) {
+    if (keyInput.value.trim()) localStorage.setItem(STORAGE_KEY_API, keyInput.value.trim());
+  } else {
+    localStorage.removeItem(STORAGE_KEY_API);
+  }
+}
+
+function handleMyProfileInput() {
+  const checkbox = document.getElementById("saveProfileCheckbox");
+  if (checkbox.checked) saveProfileToStorage();
+}
+
+function handleSaveProfileChange() {
+  const checkbox = document.getElementById("saveProfileCheckbox");
+  if (checkbox.checked) {
+    saveProfileToStorage();
+  } else {
+    localStorage.removeItem(STORAGE_KEY_PROFILE);
+  }
+}
+
+function saveProfileToStorage() {
+  const profileData = {
+    name: document.getElementById("myName").value.trim(),
+    gender: document.getElementById("myGender").value,
+    birth: document.getElementById("myBirth").value.trim(),
+    isLunar: document.getElementById("myIsLunar").checked,
+    isLeap: document.getElementById("myIsLeap").checked
+  };
+  localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profileData));
+}
+
+// 대상자 로컬스토리지 동기화 함수
+function syncTargetsToStorage() {
+  const targetCards = document.querySelectorAll('#targetContainer .sub-card');
+  const savedList = [];
+
+  targetCards.forEach(card => {
+    const isSaveChecked = card.querySelector('.t-save-chk').checked;
+    if (isSaveChecked) {
+      savedList.push({
+        storageId: card.dataset.storageId,
+        relation: card.querySelector('.t-relation').value,
+        name: card.querySelector('.t-name').value.trim(),
+        gender: card.querySelector('.t-gender').value,
+        birth: card.querySelector('.t-birth').value.trim(),
+        isLunar: card.querySelector('.t-islunar').checked,
+        isLeap: card.querySelector('.t-isleap').checked
+      });
+    }
+  });
+
+  if (savedList.length > 0) {
+    localStorage.setItem(STORAGE_KEY_TARGETS, JSON.stringify(savedList));
+  } else {
+    localStorage.removeItem(STORAGE_KEY_TARGETS);
+  }
+}
+
+let targetCount = 0;
+function addTargetPerson(data = null, isSavedDefault = false) {
+  targetCount++;
+  const container = document.getElementById('targetContainer');
+  const targetId = `target-${targetCount}`;
+  const storageId = data?.storageId || `target_uid_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+  
+  const div = document.createElement('div');
+  div.className = 'sub-card';
+  div.id = targetId;
+  div.dataset.storageId = storageId;
+
+  const relation = data?.relation || "연인";
+  const name = data?.name || "";
+  const gender = data?.gender || "여성";
+  const birth = data?.birth || "";
+  const isLunar = !!data?.isLunar;
+  const isLeap = !!data?.isLeap;
+
+  div.innerHTML = `
+    <div class="inline-row">
+      <select class="t-relation field-relation" onchange="syncTargetsToStorage()">
+        <option value="연인" ${relation === '연인' ? 'selected' : ''}>연인/썸</option>
+        <option value="배우자" ${relation === '배우자' ? 'selected' : ''}>배우자</option>
+        <option value="친구" ${relation === '친구' ? 'selected' : ''}>친구</option>
+        <option value="동료" ${relation === '동료' ? 'selected' : ''}>직장동료</option>
+        <option value="가족" ${relation === '가족' ? 'selected' : ''}>가족</option>
+      </select>
+      <input type="text" class="t-name field-name" placeholder="이름" value="${name}" oninput="syncTargetsToStorage()" />
+      <select class="t-gender field-gender" onchange="syncTargetsToStorage()">
+        <option value="여성" ${gender === '여성' ? 'selected' : ''}>여성</option>
+        <option value="남성" ${gender === '남성' ? 'selected' : ''}>남성</option>
+      </select>
+      <input type="text" class="t-birth field-birth" placeholder="생년월일시 (숫자만)" value="${birth}" oninput="formatDateTimeInput(this); syncTargetsToStorage();" />
+      <label class="chk-group"><input type="checkbox" class="t-islunar" ${isLunar ? 'checked' : ''} onchange="syncTargetsToStorage()" /> 음력</label>
+      <label class="chk-group"><input type="checkbox" class="t-isleap" ${isLeap ? 'checked' : ''} onchange="syncTargetsToStorage()" /> 윤달</label>
+      <button type="button" class="btn-close-mini" onclick="removeTargetPerson('${targetId}')" title="삭제">✕</button>
+    </div>
+    <div style="margin-top: 6px;">
+      <label class="chk-group" style="font-size:0.8rem; color:var(--muted-text);">
+        <input type="checkbox" class="t-save-chk" ${isSavedDefault ? 'checked' : ''} onchange="syncTargetsToStorage()" />
+        <span>이 대상자 정보 저장 (LocalStorage)</span>
+      </label>
+    </div>
+  `;
+  container.appendChild(div);
+
+  const birthEl = div.querySelector('.t-birth');
+  if (birth) formatDateTimeInput(birthEl);
+}
+
+function removeTargetPerson(id) {
+  const elem = document.getElementById(id);
+  if (elem) {
+    elem.remove();
+    syncTargetsToStorage();
+  }
+}
+
+function handlePersonaChange() {
+  const selected = document.getElementById('personaSelect').value;
+  document.getElementById('customPersonaBox').style.display = (selected === 'custom') ? 'block' : 'none';
+}
+
+function openModal() { document.getElementById('manualModal').style.display = 'flex'; }
+function closeModal() { document.getElementById('manualModal').style.display = 'none'; }
+
+const PERSONA_PRESETS = {
+  daemansin: {
+    name: "영험한 만년 대만신",
+    rule: `
+- 호칭: '아가', '인연자야', '내 새끼' 등으로 부른다.
+- 말투: 만년을 살아온 신령답게 위엄 있으면서도 따뜻한 '~다', '~란다', '~지' 말투를 사용한다.
+- 비유: 사주 용어를 자연 현상(거대한 바위, 비옥한 땅, 겨울의 호수, 모닥불)에 빗대어 다정하게 설명한다.`
+  },
+  fact_dosa: {
+    name: "팩트폭력 T 도사",
+    rule: `
+- 호칭: '의뢰인님' 또는 '사용자님'으로 칭한다.
+- 말투: 냉철하고 논리적인 합쇼체(~합니다, ~입니다)와 직설적인 어조를 구사한다.
+- 비유: 사주 용어를 '포트폴리오 리스크', '확률적 가중치', '알고리즘' 등 현대적 분석 용어로 치환한다.`
+  },
+  tsundere: {
+    name: "츤데레 책사",
+    rule: `
+- 호칭: '너', '이 녀석아', '어이' 등으로 부른다.
+- 말투: '쯧, 사주 꼴이 이게 뭐냐', '내가 딱 한 번만 봐주는 거다', '~란 말이다' 등 퉁명스럽게 잔소리한다.
+- 비유: 툴툴대면서도 액운과 살을 피하는 구체적 비책을 집요하고 세심하게 챙겨준다.`
+  },
+  mz_tarot: {
+    name: "Z세대 사주 크리에이터",
+    rule: `
+- 호칭: '자기야', '친구야' 등으로 부른다.
+- 말투: 에너지 넘치는 유행어와 긍정 톤('완전 대박!', '~잖아', '갓생 살자', '럭키비키')을 구사한다.
+- 비유: 사주 용어를 MBTI, 밸런스 게임, 직장인 일상 밈(Meme)에 빗대어 위트 있게 해석한다.`
+  }
+};
+
+const STEPS = [
+  "초기 명식 수립(본인 및 대상자 사주 간지 자동 도출) 및 [13단계 구성] 전체 목차 브리핑",
+  "1단계: 사주팔자 전체적 분석 (나의 타고난 그릇과 운명)",
+  "2단계: 음양오행 (나의 기질과 장단점 파악)",
+  "3단계: 십행/육친 (초년부터 말년까지의 인생 큰 흐름)",
+  "4단계: 십이운성 (인생의 주요 전환점과 타이밍 확인)",
+  "5단계: 살과 귀인 (나를 돕는 귀인과 조심해야 할 장애물/살)",
+  "6단계: 연애/결혼운 및 궁합 분석 (등록된 타인과의 조화 및 오행 상생상극)",
+  "7단계: 재물운 (돈 관리 방법과 평생의 재물 흐름)",
+  "8단계: 직업운 (적성과 맞는 직업 방향, 사업운 및 동업운)",
+  "9단계: 건강운 (유의할 점과 건강 관리법)",
+  "10단계: 대운수 (10년 단위의 평생 총운 흐름)",
+  "11단계: 연운 (향후 10년 연도별 운세)",
+  "12단계: 등록된 궁합 및 추가 질문에 대한 사주 명리학적 답변",
+  "13단계: 인생상담 (삶의 방향과 상담사의 진심 어린 조언)"
+];
+
+let currentStep = 0;
+let messages = [];
+let abortController = null;
+let isStreaming = false;
+let partialChunkAccumulator = "";
+
+function buildSystemPrompt() {
+  const selectedType = document.getElementById('personaSelect').value;
+  let personaInstruction = "";
+
+  if (selectedType === 'custom') {
+    const customText = document.getElementById('customPersonaPrompt').value.trim();
+    personaInstruction = `\n[사용자 정의 캐릭터 설정]\n${customText || '친절하고 박학다식한 사주 전문가'}`;
+  } else {
+    const preset = PERSONA_PRESETS[selectedType];
+    personaInstruction = `\n[선택된 캐릭터: ${preset.name}]\n${preset.rule}`;
+  }
+
+  return `
+너는 사주명리학과 인간사의 흐름을 통달한 전문 사주 상담가다.
+아래에 지정된 [캐릭터 페르소나]를 완벽하게 연기(Role-Play)하며, [프리미엄 종합 사주 & 궁합 리포트]를 작성해라.
+이전의 대화 기록은 모두 없던 것으로 생각하고 오직 주어진 정보로만 풀이해라.
+
+${personaInstruction}
+
+[해설 절대 규칙]
+1. 사주 간지 자동 산출: 사용자가 제공한 생년월일시(양력/음력/윤달 여부 포함)를 바탕으로 만세력에 맞춰 년주·월주·일주·시주(사주팔자 8글자)를 직접 정확히 도출해라.
+2. 초보자 맞춤 해설: 명리학을 모르는 사람을 위해 어려운 한자어나 용어가 나올 때마다 캐릭터 성격에 맞는 쉬운 비유로 "쉽게 말해서 ~라는 뜻이다"라고 설명해라.
+3. 궁합 연계: 등록된 궁합 대상자와의 오행 상생상극 및 기질 조화를 깊이 있게 분석해라.
+4. 분량 및 진행 방식: 한 번에 모든 내용을 쓰지 마라.
+- 첫 답변: 본인 및 대상자의 사주 명식(8글자 간지)을 직접 세워 보여주고, 13단계 목차와 전체 총평만 작성해라.
+- "다음" 요청마다 정확히 지정된 1개 항목씩만 아주 깊고 풍성하게 풀이해라.
+`;
+}
+
+function parseBirthInfo(birthVal, isLunar, isLeap) {
+  let typeStr = isLunar ? (isLeap ? "음력(윤달)" : "음력(평달)") : "양력";
+  return `${birthVal || '미입력'} [${typeStr}]`;
+}
+
+async function startReading() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const name = document.getElementById('myName').value.trim();
+  const gender = document.getElementById('myGender').value;
+  const birthVal = document.getElementById('myBirth').value.trim();
+  const isLunar = document.getElementById('myIsLunar').checked;
+  const isLeap = document.getElementById('myIsLeap').checked;
+  const questions = document.getElementById('questions').value.trim();
+
+  if (!apiKey || !name || !birthVal) {
+    alert("API Key, 이름, 생년월일시는 필수 입력 항목입니다.");
+    return;
+  }
+
+  if (document.getElementById("saveKeyCheckbox").checked) localStorage.setItem(STORAGE_KEY_API, apiKey);
+  if (document.getElementById("saveProfileCheckbox").checked) saveProfileToStorage();
+  syncTargetsToStorage();
+
+  const formattedBirth = parseBirthInfo(birthVal, isLunar, isLeap);
+
+  // 궁합 대상자 목록 수집
+  const targetCards = document.querySelectorAll('#targetContainer .sub-card');
+  let targetInfoText = "";
+
+  if (targetCards.length > 0) {
+    targetInfoText = "\n[함께 풀이할 궁합 대상자 목록]\n";
+    targetCards.forEach((card, idx) => {
+      const relation = card.querySelector('.t-relation').value;
+      const tName = card.querySelector('.t-name').value.trim() || `대상자${idx+1}`;
+      const tGender = card.querySelector('.t-gender').value;
+      const tBirthVal = card.querySelector('.t-birth').value.trim();
+      const tLunar = card.querySelector('.t-islunar').checked;
+      const tLeap = card.querySelector('.t-isleap').checked;
+
+      const tFullBirth = parseBirthInfo(tBirthVal, tLunar, tLeap);
+      targetInfoText += `${idx + 1}. [${relation}] 이름: ${tName} (${tGender}) / 생년월일시: ${tFullBirth}\n`;
+    });
+  } else {
+    targetInfoText = "\n[함께 풀이할 궁합 대상자]: 없음 (본인 단독 풀이)\n";
+  }
+
+  const userInitialPrompt = `
+[본인 사주 정보]
+- 이름: ${name}
+- 성별: ${gender}
+- 생년월일시: ${formattedBirth}
+
+${targetInfoText}
+
+[주요 관심사 및 추가 질문]
+${questions || '전반적인 운의 흐름과 인연 풀이를 부탁드립니다.'}
+
+위 생년월일시 정보를 바탕으로 정확한 사주 명식(년주, 월주, 일주, 시주 8글자)을 직접 세우고, 앞으로 진행할 [13단계 구성]의 목차와 대략적인 브리핑을 시작해다오.
+`;
+
+  messages = [
+    { role: "system", content: buildSystemPrompt() },
+    { role: "user", content: userInitialPrompt }
+  ];
+
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('resultCard').style.display = 'block';
+  
+  await executeStep();
+}
+
+async function requestNextStep() {
+  if (currentStep >= STEPS.length - 1) return;
+  currentStep++;
+  const prompt = `다음 항목인 [${STEPS[currentStep]}]에 대해 지정된 캐릭터 컨셉에 맞춰 아주 깊이 있고 상세하게 풀이해다오.`;
+  messages.push({ role: "user", content: prompt });
+  await executeStep();
+}
+
+function retryCurrentStep() {
+  document.getElementById('retryBtn').style.display = 'none';
+  executeStep(true);
+}
+
+function togglePause() {
+  if (isStreaming && abortController) {
+    abortController.abort();
+    setStatus("일시정지됨", "var(--warning-color)");
+  }
+}
+
+function setStatus(text, color = "#fff") {
+  const badge = document.getElementById('statusBadge');
+  badge.innerText = text;
+  badge.style.backgroundColor = color === "#fff" ? "#333" : color;
+  badge.style.color = (color === "var(--warning-color)" || color === "var(--accent-color)") ? "#111" : "#fff";
+}
+
+async function executeStep(isRetry = false) {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const outputEl = document.getElementById('output');
+  const nextBtn = document.getElementById('nextBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const titleEl = document.getElementById('currentStepTitle');
+  const progressFill = document.getElementById('progressFill');
+
+  nextBtn.disabled = true;
+  retryBtn.style.display = 'none';
+  pauseBtn.style.display = 'inline-block';
+  pauseBtn.innerText = '일시정지';
+  
+  titleEl.innerText = STEPS[currentStep];
+  progressFill.style.width = `${((currentStep + 1) / STEPS.length) * 100}%`;
+  setStatus("답변 생성 중...", "var(--accent-color)");
+
+  if (!isRetry && currentStep > 0) {
+    outputEl.innerHTML += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  }
+
+  abortController = new AbortController();
+  isStreaming = true;
+  partialChunkAccumulator = "";
+
+  const timeoutId = setTimeout(() => {
+    if (isStreaming) {
+      abortController.abort();
+      setStatus("응답 시간 초과 (재시도 필요)", "var(--danger-color)");
+    }
+  }, 45000);
+
+  try {
+    const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "meta/llama-3.3-70b-instruct",
+        messages: messages,
+        temperature: 0.7,
+        top_p: 0.9,
+        max_tokens: 4096,
+        stream: true
+      }),
+      signal: abortController.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`API 오류 (${response.status}): ${response.statusText}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ") && line.trim() !== "data: [DONE]") {
+          try {
+            const data = JSON.parse(line.replace(/^data: /, ""));
+            const token = data.choices[0]?.delta?.content || "";
+            partialChunkAccumulator += token;
+            outputEl.innerHTML += token;
+            window.scrollTo(0, document.body.scrollHeight);
+          } catch (e) {}
+        }
+      }
+    }
+
+    messages.push({ role: "assistant", content: partialChunkAccumulator });
+    isStreaming = false;
+    pauseBtn.style.display = 'none';
+    setStatus("완료", "#2e7d32");
+
+    if (currentStep < STEPS.length - 1) {
+      nextBtn.disabled = false;
+      nextBtn.innerText = `다음 (${STEPS[currentStep + 1].split(':')[0]}) 진행하기`;
+    } else {
+      nextBtn.style.display = 'none';
+      titleEl.innerText = "모든 사주 및 궁합 풀이가 완료되었습니다.";
+    }
+
+  } catch (err) {
+    clearTimeout(timeoutId);
+    isStreaming = false;
+    pauseBtn.style.display = 'none';
+    retryBtn.style.display = 'inline-block';
+
+    if (err.name === 'AbortError') {
+      outputEl.innerHTML += `\n\n[연결 중단됨]: 요청이 중단되었습니다. '재시도' 버튼을 눌러 이어서 진행하세요.`;
+    } else {
+      outputEl.innerHTML += `\n\n[오류 발생]: ${err.message}\n네트워크 또는 API Key 상태를 확인 후 '재시도'를 눌러주세요.`;
+      setStatus("오류 발생", "var(--danger-color)");
+    }
+  }
+}
+</script>
+</body>
+</html>
