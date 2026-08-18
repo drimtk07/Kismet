@@ -38,6 +38,14 @@
       margin-bottom: 20px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
     h1, h2, h3 {
       color: var(--accent-color);
       margin-top: 0;
@@ -91,6 +99,16 @@
       margin: 0;
       accent-color: var(--accent-color);
       cursor: pointer;
+    }
+
+    .master-save-box {
+      background: #252535;
+      border: 1px solid var(--accent-color);
+      border-radius: 8px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .btn-close-mini {
@@ -217,9 +235,17 @@
 
 <div class="container">
   <div class="card" id="formCard">
-    <h1>🔮 AI 종합 사주 & 궁합 명식 의뢰</h1>
+    <div class="header-bar">
+      <h1 style="margin:0;">🔮 AI 종합 사주 & 궁합 명식 의뢰</h1>
+      
+      <!-- 전체 저장 토글 마스터 체크박스 -->
+      <label class="chk-group master-save-box" for="masterSaveCheckbox">
+        <input type="checkbox" id="masterSaveCheckbox" onchange="toggleAllSaves(this.checked)" />
+        <strong style="color:var(--accent-color);">모든 입력값 자동저장 (전체선택)</strong>
+      </label>
+    </div>
     
-    <!-- API Key 설정 영역 -->
+    <!-- API Key 설정 -->
     <div class="api-header">
       <label style="margin:0;">NVIDIA API Key</label>
       <div class="api-links">
@@ -229,14 +255,19 @@
     </div>
     <input type="password" id="apiKey" placeholder="nvapi-..." oninput="handleApiKeyInput()" style="margin-top:6px;" />
     
-    <label class="chk-group" style="margin-top:8px;" for="saveKeyCheckbox">
-      <input type="checkbox" id="saveKeyCheckbox" onchange="handleSaveKeyChange()" />
-      <span>이 브라우저에 API Key 저장하기 (LocalStorage)</span>
+    <label class="chk-group" style="margin-top:6px;" for="saveKeyCheckbox">
+      <input type="checkbox" id="saveKeyCheckbox" class="sub-save-chk" onchange="handleSaveKeyChange(); updateMasterCheckboxState();" />
+      <span>이 브라우저에 API Key 저장 (LocalStorage)</span>
     </label>
 
-    <!-- Cloudflare Worker Proxy Endpoint 설정 (CORS 방어용) -->
+    <!-- CORS 프록시 엔드포인트 -->
     <label style="margin-top:14px;">CORS 프록시 엔드포인트 (Cloudflare Worker URL)</label>
     <input type="text" id="proxyUrl" placeholder="https://<당신의-워커-이름>.workers.dev" oninput="handleProxyInput()" style="margin-top:4px;" />
+    
+    <label class="chk-group" style="margin-top:6px;" for="saveProxyCheckbox">
+      <input type="checkbox" id="saveProxyCheckbox" class="sub-save-chk" onchange="handleSaveProxyChange(); updateMasterCheckboxState();" />
+      <span>이 브라우저에 프록시 엔드포인트 저장 (LocalStorage)</span>
+    </label>
 
     <!-- AI 캐릭터 페르소나 -->
     <h3 style="margin-top: 22px;">[해설 상담사 AI 캐릭터 선택]</h3>
@@ -265,10 +296,9 @@
       <label class="chk-group"><input type="checkbox" id="myIsLeap" onchange="handleMyProfileInput()" /> 윤달</label>
     </div>
 
-    <!-- 본인 인적사항 저장 체크박스 (디폴트: 해제) -->
     <label class="chk-group" style="margin-top:8px;" for="saveProfileCheckbox">
-      <input type="checkbox" id="saveProfileCheckbox" onchange="handleSaveProfileChange()" />
-      <span>본인 인적사항 이 브라우저에 저장하기 (LocalStorage)</span>
+      <input type="checkbox" id="saveProfileCheckbox" class="sub-save-chk" onchange="handleSaveProfileChange(); updateMasterCheckboxState();" />
+      <span>본인 인적사항 저장 (LocalStorage)</span>
     </label>
 
     <!-- 궁합 대상자 목록 -->
@@ -280,8 +310,14 @@
       <button type="button" class="btn-secondary" onclick="addTargetPerson()">+ 궁합 대상자 추가하기</button>
     </div>
 
+    <!-- 추가 질문 -->
     <h3 style="margin-top: 22px;">[주요 관심사 및 추가 질문]</h3>
-    <textarea id="questions" rows="3" placeholder="1. 올해 이직운과 사업운의 흐름이 궁금합니다.&#10;2. 추가한 상대방과의 궁합/인연 흐름은 어떤가요?"></textarea>
+    <textarea id="questions" rows="3" placeholder="1. 올해 이직운과 사업운의 흐름이 궁금합니다.&#10;2. 추가한 상대방과의 궁합/인연 흐름은 어떤가요?" oninput="handleQuestionsInput()"></textarea>
+
+    <label class="chk-group" style="margin-top:8px;" for="saveQuestionsCheckbox">
+      <input type="checkbox" id="saveQuestionsCheckbox" class="sub-save-chk" onchange="handleSaveQuestionsChange(); updateMasterCheckboxState();" />
+      <span>추가 질문 내용 저장 (LocalStorage)</span>
+    </label>
 
     <button id="startBtn" onclick="startReading()" style="margin-top:16px;">사주 및 궁합 풀이 시작하기</button>
   </div>
@@ -323,13 +359,13 @@
 </div>
 
 <script>
-// 기본 Cloudflare Worker 주소 설정 (배포한 Worker 주소로 변경 가능)
 const DEFAULT_WORKER_URL = ""; 
 
 const STORAGE_KEY_API = "nvidia_api_key_store";
 const STORAGE_KEY_PROXY = "nvidia_proxy_url_store";
 const STORAGE_KEY_PROFILE = "my_saju_profile_store";
 const STORAGE_KEY_TARGETS = "my_saju_targets_store";
+const STORAGE_KEY_QUESTIONS = "my_saju_questions_store";
 
 function formatDateTimeInput(el) {
   let v = el.value.replace(/[^0-9]/g, '');
@@ -349,22 +385,24 @@ function formatDateTimeInput(el) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  // 1. API Key 복원
+  // 1. API Key
   const savedKey = localStorage.getItem(STORAGE_KEY_API);
-  const keyInput = document.getElementById("apiKey");
-  const keyCheckbox = document.getElementById("saveKeyCheckbox");
   if (savedKey) {
-    keyInput.value = savedKey;
-    keyCheckbox.checked = true;
+    document.getElementById("apiKey").value = savedKey;
+    document.getElementById("saveKeyCheckbox").checked = true;
   }
 
-  // 2. 프록시 URL 복원
-  const savedProxy = localStorage.getItem(STORAGE_KEY_PROXY) || DEFAULT_WORKER_URL;
-  document.getElementById("proxyUrl").value = savedProxy;
+  // 2. 프록시 URL
+  const savedProxy = localStorage.getItem(STORAGE_KEY_PROXY);
+  if (savedProxy !== null) {
+    document.getElementById("proxyUrl").value = savedProxy;
+    document.getElementById("saveProxyCheckbox").checked = true;
+  } else if (DEFAULT_WORKER_URL) {
+    document.getElementById("proxyUrl").value = DEFAULT_WORKER_URL;
+  }
 
-  // 3. 본인 정보 복원
+  // 3. 본인 정보
   const savedProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
-  const profileCheckbox = document.getElementById("saveProfileCheckbox");
   if (savedProfile) {
     try {
       const data = JSON.parse(savedProfile);
@@ -374,13 +412,11 @@ window.addEventListener("DOMContentLoaded", () => {
       formatDateTimeInput(document.getElementById("myBirth"));
       document.getElementById("myIsLunar").checked = !!data.isLunar;
       document.getElementById("myIsLeap").checked = !!data.isLeap;
-      profileCheckbox.checked = true;
+      document.getElementById("saveProfileCheckbox").checked = true;
     } catch (e) {}
-  } else {
-    profileCheckbox.checked = false;
   }
 
-  // 4. 저장된 대상자들 복원
+  // 4. 대상자 목록
   const savedTargets = localStorage.getItem(STORAGE_KEY_TARGETS);
   if (savedTargets) {
     try {
@@ -392,8 +428,59 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     } catch (e) {}
   }
+
+  // 5. 추가 질문
+  const savedQuestions = localStorage.getItem(STORAGE_KEY_QUESTIONS);
+  if (savedQuestions !== null) {
+    document.getElementById("questions").value = savedQuestions;
+    document.getElementById("saveQuestionsCheckbox").checked = true;
+  }
+
+  // 전체 마스터 체크박스 상태 갱신
+  updateMasterCheckboxState();
 });
 
+// 전체 저장 마스터 토글
+function toggleAllSaves(isChecked) {
+  const subCheckboxes = document.querySelectorAll('.sub-save-chk');
+  subCheckboxes.forEach(chk => {
+    chk.checked = isChecked;
+  });
+
+  // 각 항목별 저장/삭제 동기화
+  handleSaveKeyChange();
+  handleSaveProxyChange();
+  handleSaveProfileChange();
+  syncTargetsToStorage();
+  handleSaveQuestionsChange();
+}
+
+// 개별 체크박스 상태 변화에 따른 마스터 체크박스 실시간 동기화
+function updateMasterCheckboxState() {
+  const master = document.getElementById("masterSaveCheckbox");
+  const subCheckboxes = Array.from(document.querySelectorAll('.sub-save-chk'));
+  
+  if (subCheckboxes.length === 0) {
+    master.checked = false;
+    master.indeterminate = false;
+    return;
+  }
+
+  const checkedCount = subCheckboxes.filter(c => c.checked).length;
+
+  if (checkedCount === subCheckboxes.length) {
+    master.checked = true;
+    master.indeterminate = false;
+  } else if (checkedCount === 0) {
+    master.checked = false;
+    master.indeterminate = false;
+  } else {
+    master.checked = false;
+    master.indeterminate = true; // 부분 선택 상태
+  }
+}
+
+// API Key 핸들러
 function handleApiKeyInput() {
   const keyInput = document.getElementById("apiKey");
   const checkbox = document.getElementById("saveKeyCheckbox");
@@ -410,11 +497,24 @@ function handleSaveKeyChange() {
   }
 }
 
+// 프록시 URL 핸들러
 function handleProxyInput() {
-  const proxyUrl = document.getElementById("proxyUrl").value.trim();
-  localStorage.setItem(STORAGE_KEY_PROXY, proxyUrl);
+  const proxyInput = document.getElementById("proxyUrl");
+  const checkbox = document.getElementById("saveProxyCheckbox");
+  if (checkbox.checked) localStorage.setItem(STORAGE_KEY_PROXY, proxyInput.value.trim());
 }
 
+function handleSaveProxyChange() {
+  const proxyInput = document.getElementById("proxyUrl");
+  const checkbox = document.getElementById("saveProxyCheckbox");
+  if (checkbox.checked) {
+    localStorage.setItem(STORAGE_KEY_PROXY, proxyInput.value.trim());
+  } else {
+    localStorage.removeItem(STORAGE_KEY_PROXY);
+  }
+}
+
+// 본인 정보 핸들러
 function handleMyProfileInput() {
   const checkbox = document.getElementById("saveProfileCheckbox");
   if (checkbox.checked) saveProfileToStorage();
@@ -440,6 +540,24 @@ function saveProfileToStorage() {
   localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profileData));
 }
 
+// 추가 질문 핸들러
+function handleQuestionsInput() {
+  const questionsInput = document.getElementById("questions");
+  const checkbox = document.getElementById("saveQuestionsCheckbox");
+  if (checkbox.checked) localStorage.setItem(STORAGE_KEY_QUESTIONS, questionsInput.value);
+}
+
+function handleSaveQuestionsChange() {
+  const questionsInput = document.getElementById("questions");
+  const checkbox = document.getElementById("saveQuestionsCheckbox");
+  if (checkbox.checked) {
+    localStorage.setItem(STORAGE_KEY_QUESTIONS, questionsInput.value);
+  } else {
+    localStorage.removeItem(STORAGE_KEY_QUESTIONS);
+  }
+}
+
+// 궁합 대상자 목록 동기화
 function syncTargetsToStorage() {
   const targetCards = document.querySelectorAll('#targetContainer .sub-card');
   const savedList = [];
@@ -464,6 +582,7 @@ function syncTargetsToStorage() {
   } else {
     localStorage.removeItem(STORAGE_KEY_TARGETS);
   }
+  updateMasterCheckboxState();
 }
 
 let targetCount = 0;
@@ -506,7 +625,7 @@ function addTargetPerson(data = null, isSavedDefault = false) {
     </div>
     <div style="margin-top: 6px;">
       <label class="chk-group" style="font-size:0.8rem; color:var(--muted-text);">
-        <input type="checkbox" class="t-save-chk" ${isSavedDefault ? 'checked' : ''} onchange="syncTargetsToStorage()" />
+        <input type="checkbox" class="t-save-chk sub-save-chk" ${isSavedDefault ? 'checked' : ''} onchange="syncTargetsToStorage()" />
         <span>이 대상자 정보 저장 (LocalStorage)</span>
       </label>
     </div>
@@ -515,6 +634,8 @@ function addTargetPerson(data = null, isSavedDefault = false) {
 
   const birthEl = div.querySelector('.t-birth');
   if (birth) formatDateTimeInput(birthEl);
+
+  updateMasterCheckboxState();
 }
 
 function removeTargetPerson(id) {
@@ -635,8 +756,11 @@ async function startReading() {
     return;
   }
 
+  // 저장 체크 상태 반영
   if (document.getElementById("saveKeyCheckbox").checked) localStorage.setItem(STORAGE_KEY_API, apiKey);
+  if (document.getElementById("saveProxyCheckbox").checked) localStorage.setItem(STORAGE_KEY_PROXY, document.getElementById("proxyUrl").value.trim());
   if (document.getElementById("saveProfileCheckbox").checked) saveProfileToStorage();
+  if (document.getElementById("saveQuestionsCheckbox").checked) localStorage.setItem(STORAGE_KEY_QUESTIONS, questions);
   syncTargetsToStorage();
 
   const formattedBirth = parseBirthInfo(birthVal, isLunar, isLeap);
@@ -723,7 +847,6 @@ async function executeStep(isRetry = false) {
   const titleEl = document.getElementById('currentStepTitle');
   const progressFill = document.getElementById('progressFill');
 
-  // 프록시 URL 우선 사용, 없으면 공개 CORS 우회 프록시 활용
   let targetUrl = document.getElementById("proxyUrl").value.trim() || DEFAULT_WORKER_URL;
   if (!targetUrl) {
     targetUrl = `https://corsproxy.io/?${encodeURIComponent("https://integrate.api.nvidia.com/v1/chat/completions")}`;
