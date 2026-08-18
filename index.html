@@ -219,6 +219,7 @@
   <div class="card" id="formCard">
     <h1>🔮 AI 종합 사주 & 궁합 명식 의뢰</h1>
     
+    <!-- API Key 설정 영역 -->
     <div class="api-header">
       <label style="margin:0;">NVIDIA API Key</label>
       <div class="api-links">
@@ -232,6 +233,10 @@
       <input type="checkbox" id="saveKeyCheckbox" onchange="handleSaveKeyChange()" />
       <span>이 브라우저에 API Key 저장하기 (LocalStorage)</span>
     </label>
+
+    <!-- Cloudflare Worker Proxy Endpoint 설정 (CORS 방어용) -->
+    <label style="margin-top:14px;">CORS 프록시 엔드포인트 (Cloudflare Worker URL)</label>
+    <input type="text" id="proxyUrl" placeholder="https://<당신의-워커-이름>.workers.dev" oninput="handleProxyInput()" style="margin-top:4px;" />
 
     <!-- AI 캐릭터 페르소나 -->
     <h3 style="margin-top: 22px;">[해설 상담사 AI 캐릭터 선택]</h3>
@@ -318,7 +323,11 @@
 </div>
 
 <script>
+// 기본 Cloudflare Worker 주소 설정 (배포한 Worker 주소로 변경 가능)
+const DEFAULT_WORKER_URL = ""; 
+
 const STORAGE_KEY_API = "nvidia_api_key_store";
+const STORAGE_KEY_PROXY = "nvidia_proxy_url_store";
 const STORAGE_KEY_PROFILE = "my_saju_profile_store";
 const STORAGE_KEY_TARGETS = "my_saju_targets_store";
 
@@ -349,7 +358,11 @@ window.addEventListener("DOMContentLoaded", () => {
     keyCheckbox.checked = true;
   }
 
-  // 2. 본인 정보 복원
+  // 2. 프록시 URL 복원
+  const savedProxy = localStorage.getItem(STORAGE_KEY_PROXY) || DEFAULT_WORKER_URL;
+  document.getElementById("proxyUrl").value = savedProxy;
+
+  // 3. 본인 정보 복원
   const savedProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
   const profileCheckbox = document.getElementById("saveProfileCheckbox");
   if (savedProfile) {
@@ -367,7 +380,7 @@ window.addEventListener("DOMContentLoaded", () => {
     profileCheckbox.checked = false;
   }
 
-  // 3. 저장된 대상자들 복원
+  // 4. 저장된 대상자들 복원
   const savedTargets = localStorage.getItem(STORAGE_KEY_TARGETS);
   if (savedTargets) {
     try {
@@ -397,6 +410,11 @@ function handleSaveKeyChange() {
   }
 }
 
+function handleProxyInput() {
+  const proxyUrl = document.getElementById("proxyUrl").value.trim();
+  localStorage.setItem(STORAGE_KEY_PROXY, proxyUrl);
+}
+
 function handleMyProfileInput() {
   const checkbox = document.getElementById("saveProfileCheckbox");
   if (checkbox.checked) saveProfileToStorage();
@@ -422,7 +440,6 @@ function saveProfileToStorage() {
   localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profileData));
 }
 
-// 대상자 로컬스토리지 동기화 함수
 function syncTargetsToStorage() {
   const targetCards = document.querySelectorAll('#targetContainer .sub-card');
   const savedList = [];
@@ -706,6 +723,12 @@ async function executeStep(isRetry = false) {
   const titleEl = document.getElementById('currentStepTitle');
   const progressFill = document.getElementById('progressFill');
 
+  // 프록시 URL 우선 사용, 없으면 공개 CORS 우회 프록시 활용
+  let targetUrl = document.getElementById("proxyUrl").value.trim() || DEFAULT_WORKER_URL;
+  if (!targetUrl) {
+    targetUrl = `https://corsproxy.io/?${encodeURIComponent("https://integrate.api.nvidia.com/v1/chat/completions")}`;
+  }
+
   nextBtn.disabled = true;
   retryBtn.style.display = 'none';
   pauseBtn.style.display = 'inline-block';
@@ -731,7 +754,7 @@ async function executeStep(isRetry = false) {
   }, 45000);
 
   try {
-    const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+    const response = await fetch(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -799,7 +822,7 @@ async function executeStep(isRetry = false) {
     if (err.name === 'AbortError') {
       outputEl.innerHTML += `\n\n[연결 중단됨]: 요청이 중단되었습니다. '재시도' 버튼을 눌러 이어서 진행하세요.`;
     } else {
-      outputEl.innerHTML += `\n\n[오류 발생]: ${err.message}\n네트워크 또는 API Key 상태를 확인 후 '재시도'를 눌러주세요.`;
+      outputEl.innerHTML += `\n\n[오류 발생]: ${err.message}\nCloudflare Worker 프록시 주소 및 API Key를 확인 후 '재시도'를 눌러주세요.`;
       setStatus("오류 발생", "var(--danger-color)");
     }
   }
